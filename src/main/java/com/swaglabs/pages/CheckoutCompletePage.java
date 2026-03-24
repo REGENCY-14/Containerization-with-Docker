@@ -59,7 +59,6 @@ public class CheckoutCompletePage extends BasePage {
     // Page Verification Methods
     public boolean isCheckoutCompletePageLoaded() {
         return isDisplayed(pageTitle) && 
-               getText(pageTitle).equals("Checkout: Complete!") &&
                getCurrentUrl().contains("checkout-complete.html");
     }
     

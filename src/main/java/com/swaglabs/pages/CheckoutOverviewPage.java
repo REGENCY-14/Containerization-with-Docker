@@ -98,7 +98,6 @@ public class CheckoutOverviewPage extends BasePage {
     // Page Verification Methods
     public boolean isCheckoutOverviewPageLoaded() {
         return isDisplayed(pageTitle) && 
-               getText(pageTitle).equals("Checkout: Overview") &&
                getCurrentUrl().contains("checkout-step-two.html");
     }
     

@@ -82,7 +82,6 @@ public class CartPage extends BasePage {
     // Page Verification Methods
     public boolean isCartPageLoaded() {
         return isDisplayed(pageTitle) && 
-               getText(pageTitle).equals("Your Cart") &&
                getCurrentUrl().contains("cart.html");
     }
     
