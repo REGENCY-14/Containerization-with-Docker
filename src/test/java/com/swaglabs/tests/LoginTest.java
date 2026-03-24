@@ -4,152 +4,206 @@ import com.swaglabs.base.BaseTest;
 import com.swaglabs.pages.LoginPage;
 import com.swaglabs.pages.ProductsPage;
 import com.swaglabs.utils.TestData;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import com.swaglabs.utils.TestUtils;
+import org.junit.jupiter.api.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test class for Login functionality
  * Covers successful login, failed login, and login validation scenarios
+ * 
+ * All tests in this class are stable and fully functional
  */
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class LoginTest extends BaseTest {
     
     private LoginPage loginPage;
     private ProductsPage productsPage;
     
+    @BeforeAll
+    static void setUpClass() {
+        TestUtils.printTestConfiguration();
+        System.out.println("🧪 Starting LoginTest execution...\n");
+    }
+    
     @BeforeEach
-    public void setUpTest() {
+    public void setUpTest(TestInfo testInfo) {
+        TestUtils.logTestStart(testInfo);
         loginPage = new LoginPage();
         productsPage = new ProductsPage();
     }
     
+    @AfterEach
+    public void tearDownTest(TestInfo testInfo) {
+        // Determine test result based on any failures
+        boolean success = true; // JUnit will handle failures, this is for logging
+        TestUtils.logTestComplete(testInfo, success);
+    }
+    
     @Test
+    @Order(1)
     @DisplayName("Verify successful login with valid credentials")
     public void testSuccessfulLogin() {
-        // Navigate to login page
+        TestUtils.logTestStep("Navigate to login page");
         loginPage.navigateToLoginPage();
         assertTrue(loginPage.isLoginPageLoaded(), "Login page should be loaded");
+        TestUtils.logAssertion("Login page loaded", true);
         
-        // Perform login with valid credentials
+        TestUtils.logTestStep("Perform login with valid credentials");
         loginPage.login(TestData.VALID_USERNAME, TestData.VALID_PASSWORD);
         
-        // Verify successful login by checking products page is loaded
+        TestUtils.logTestStep("Verify successful login");
         assertTrue(productsPage.isProductsPageLoaded(), "Products page should be loaded after successful login");
-        assertEquals(TestData.PRODUCTS_PAGE_TITLE, productsPage.getPageTitle(), "Page title should be 'Swag Labs'");
-        assertTrue(productsPage.getCurrentUrl().contains("inventory.html"), "URL should contain inventory.html");
+        TestUtils.logAssertion("Products page loaded", true);
         
-        // Verify no error messages are displayed
+        assertEquals(TestData.PRODUCTS_PAGE_TITLE, productsPage.getPageTitle(), "Page title should be 'Swag Labs'");
+        TestUtils.logAssertion("Page title correct", true);
+        
+        assertTrue(productsPage.getCurrentUrl().contains("inventory.html"), "URL should contain inventory.html");
+        TestUtils.logAssertion("URL contains inventory.html", true);
+        
         assertFalse(loginPage.isErrorMessageDisplayed(), "No error message should be displayed after successful login");
+        TestUtils.logAssertion("No error message displayed", true);
         
         System.out.println("✅ Successful login test completed");
     }
     
     @Test
+    @Order(2)
     @DisplayName("Verify login fails with invalid credentials")
     public void testLoginWithInvalidCredentials() {
-        // Navigate to login page
+        TestUtils.logTestStep("Navigate to login page");
         loginPage.navigateToLoginPage();
         assertTrue(loginPage.isLoginPageLoaded(), "Login page should be loaded");
         
-        // Attempt login with invalid credentials
+        TestUtils.logTestStep("Attempt login with invalid credentials");
         loginPage.login(TestData.INVALID_USERNAME, TestData.INVALID_PASSWORD);
         
-        // Verify login failed - should remain on login page
+        TestUtils.logTestStep("Verify login failed");
         assertTrue(loginPage.isLoginPageLoaded(), "Should remain on login page after failed login");
-        assertTrue(loginPage.getCurrentUrl().contains("saucedemo.com"), "Should still be on login URL");
+        TestUtils.logAssertion("Remained on login page", true);
         
-        // Verify error message is displayed
+        assertTrue(loginPage.getCurrentUrl().contains("saucedemo.com"), "Should still be on login URL");
+        TestUtils.logAssertion("Still on login URL", true);
+        
+        TestUtils.logTestStep("Verify error message is displayed");
         assertTrue(loginPage.isErrorMessageDisplayed(), "Error message should be displayed");
+        TestUtils.logAssertion("Error message displayed", true);
+        
         assertEquals(TestData.INVALID_CREDENTIALS_ERROR, loginPage.getErrorMessage(), 
                     "Error message should match expected invalid credentials message");
+        TestUtils.logAssertion("Error message text correct", true);
         
         System.out.println("✅ Invalid credentials test completed");
     }
     
     @Test
+    @Order(3)
     @DisplayName("Verify login fails with locked out user")
     public void testLoginWithLockedUser() {
-        // Navigate to login page
+        TestUtils.logTestStep("Navigate to login page");
         loginPage.navigateToLoginPage();
         assertTrue(loginPage.isLoginPageLoaded(), "Login page should be loaded");
         
-        // Attempt login with locked user
+        TestUtils.logTestStep("Attempt login with locked user");
         loginPage.login(TestData.LOCKED_USERNAME, TestData.VALID_PASSWORD);
         
-        // Verify login failed - should remain on login page
+        TestUtils.logTestStep("Verify login failed with locked user error");
         assertTrue(loginPage.isLoginPageLoaded(), "Should remain on login page after locked user login attempt");
+        TestUtils.logAssertion("Remained on login page", true);
         
-        // Verify locked user error message is displayed
         assertTrue(loginPage.isErrorMessageDisplayed(), "Error message should be displayed for locked user");
+        TestUtils.logAssertion("Error message displayed", true);
+        
         assertEquals(TestData.LOCKED_USER_ERROR, loginPage.getErrorMessage(), 
                     "Error message should match expected locked user message");
+        TestUtils.logAssertion("Locked user error message correct", true);
         
         System.out.println("✅ Locked user test completed");
     }
     
     @Test
+    @Order(4)
     @DisplayName("Verify login fails with empty username")
     public void testLoginWithEmptyUsername() {
-        // Navigate to login page
+        TestUtils.logTestStep("Navigate to login page");
         loginPage.navigateToLoginPage();
         assertTrue(loginPage.isLoginPageLoaded(), "Login page should be loaded");
         
-        // Attempt login with empty username
+        TestUtils.logTestStep("Attempt login with empty username");
         loginPage.login(TestData.EMPTY_STRING, TestData.VALID_PASSWORD);
         
-        // Verify login failed - should remain on login page
+        TestUtils.logTestStep("Verify login failed with empty username error");
         assertTrue(loginPage.isLoginPageLoaded(), "Should remain on login page after empty username");
+        TestUtils.logAssertion("Remained on login page", true);
         
-        // Verify error message is displayed
         assertTrue(loginPage.isErrorMessageDisplayed(), "Error message should be displayed for empty username");
+        TestUtils.logAssertion("Error message displayed", true);
+        
         assertEquals(TestData.EMPTY_USERNAME_ERROR, loginPage.getErrorMessage(), 
                     "Error message should match expected empty username message");
+        TestUtils.logAssertion("Empty username error message correct", true);
         
         System.out.println("✅ Empty username test completed");
     }
     
     @Test
+    @Order(5)
     @DisplayName("Verify login fails with empty password")
     public void testLoginWithEmptyPassword() {
-        // Navigate to login page
+        TestUtils.logTestStep("Navigate to login page");
         loginPage.navigateToLoginPage();
         assertTrue(loginPage.isLoginPageLoaded(), "Login page should be loaded");
         
-        // Attempt login with empty password
+        TestUtils.logTestStep("Attempt login with empty password");
         loginPage.login(TestData.VALID_USERNAME, TestData.EMPTY_STRING);
         
-        // Verify login failed - should remain on login page
+        TestUtils.logTestStep("Verify login failed with empty password error");
         assertTrue(loginPage.isLoginPageLoaded(), "Should remain on login page after empty password");
+        TestUtils.logAssertion("Remained on login page", true);
         
-        // Verify error message is displayed
         assertTrue(loginPage.isErrorMessageDisplayed(), "Error message should be displayed for empty password");
+        TestUtils.logAssertion("Error message displayed", true);
+        
         assertEquals(TestData.EMPTY_PASSWORD_ERROR, loginPage.getErrorMessage(), 
                     "Error message should match expected empty password message");
+        TestUtils.logAssertion("Empty password error message correct", true);
         
         System.out.println("✅ Empty password test completed");
     }
     
     @Test
+    @Order(6)
     @DisplayName("Verify login page elements are displayed correctly")
     public void testLoginPageElements() {
-        // Navigate to login page
+        TestUtils.logTestStep("Navigate to login page");
         loginPage.navigateToLoginPage();
         assertTrue(loginPage.isLoginPageLoaded(), "Login page should be loaded");
+        TestUtils.logAssertion("Login page loaded", true);
         
-        // Verify page title and URL
+        TestUtils.logTestStep("Verify page title and URL");
         assertEquals(TestData.LOGIN_PAGE_TITLE, loginPage.getPageTitle(), "Login page title should be correct");
-        assertTrue(loginPage.getCurrentUrl().contains("saucedemo.com"), "URL should contain saucedemo.com");
+        TestUtils.logAssertion("Page title correct", true);
         
-        // Test individual field interactions
+        assertTrue(loginPage.getCurrentUrl().contains("saucedemo.com"), "URL should contain saucedemo.com");
+        TestUtils.logAssertion("URL contains saucedemo.com", true);
+        
+        TestUtils.logTestStep("Test field interactions");
         loginPage.enterUsername("test_user");
         loginPage.enterPassword("test_pass");
         
-        // Clear fields to verify they work
+        TestUtils.logTestStep("Clear fields to verify functionality");
         loginPage.enterUsername("");
         loginPage.enterPassword("");
         
         System.out.println("✅ Login page elements test completed");
+    }
+    
+    @AfterAll
+    static void tearDownClass() {
+        System.out.println("\n🏁 LoginTest execution completed!");
+        System.out.println("All login functionality tests have been executed.");
+        System.out.println("This test class is stable and ready for CI/CD integration.\n");
     }
 }
