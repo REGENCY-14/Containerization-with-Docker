@@ -6,7 +6,8 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.FindBy;
 
 /**
- * Page Object Model for Swag Labs Login Page
+ * Enhanced Page Object Model for Swag Labs Login Page
+ * with improved wait handling and error management
  */
 public class LoginPage extends BasePage {
     
@@ -26,14 +27,23 @@ public class LoginPage extends BasePage {
     @FindBy(css = "[data-test='error']")
     private WebElement errorMessage;
     
-    // Constructor
+    @FindBy(className = "login_logo")
+    private WebElement loginLogo;
+    
+    // Constructor using WebDriver
     public LoginPage(WebDriver driver) {
         super(driver);
+    }
+    
+    // Constructor using DriverManager
+    public LoginPage() {
+        super();
     }
     
     // Page Actions
     public void navigateToLoginPage() {
         driver.get(LOGIN_URL);
+        waitForPageToLoad();
     }
     
     public void enterUsername(String username) {
@@ -53,11 +63,11 @@ public class LoginPage extends BasePage {
     }
     
     public boolean isErrorMessageDisplayed() {
-        try {
-            return isDisplayed(errorMessage);
-        } catch (Exception e) {
-            return false;
-        }
+        return isDisplayed(errorMessage);
+    }
+    
+    public boolean isLoginPageLoaded() {
+        return isDisplayed(loginLogo) && getCurrentUrl().contains("saucedemo.com");
     }
     
     // Combined action method
@@ -65,5 +75,11 @@ public class LoginPage extends BasePage {
         enterUsername(username);
         enterPassword(password);
         clickLoginButton();
+    }
+    
+    // Wait for login page to fully load
+    private void waitForPageToLoad() {
+        waitForTitleToContain("Swag Labs");
+        waitForElementToBeVisible(org.openqa.selenium.By.className("login_logo"));
     }
 }

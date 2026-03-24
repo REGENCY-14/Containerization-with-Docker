@@ -9,24 +9,48 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Test class for Login functionality
- * This is a basic structure example - actual test implementation will come in later phases
+ * Enhanced test class for Login functionality demonstrating
+ * the improved WebDriver base setup and wait handling
  */
 public class LoginTest extends BaseTest {
     
     private LoginPage loginPage;
     
     @Test
-    @DisplayName("Verify login page loads successfully")
+    @DisplayName("Verify login page loads successfully with enhanced WebDriver setup")
     public void testLoginPageLoads() {
-        loginPage = new LoginPage(driver);
+        // Initialize page object using the enhanced constructor
+        loginPage = new LoginPage();
+        
+        // Navigate to login page
         loginPage.navigateToLoginPage();
         
-        // Basic assertion to verify page loaded
-        assertTrue(driver.getCurrentUrl().contains("saucedemo.com"));
-        assertEquals("Swag Labs", driver.getTitle());
+        // Verify page loaded correctly using enhanced wait methods
+        assertTrue(loginPage.isLoginPageLoaded(), "Login page should be loaded");
+        assertEquals("Swag Labs", loginPage.getPageTitle(), "Page title should be 'Swag Labs'");
+        assertTrue(loginPage.getCurrentUrl().contains("saucedemo.com"), "URL should contain saucedemo.com");
     }
     
-    // Additional test methods will be implemented in later phases
-    // This structure shows how tests will be organized
+    @Test
+    @DisplayName("Verify WebDriver configuration and browser setup")
+    public void testWebDriverConfiguration() {
+        // Verify driver is properly initialized
+        assertNotNull(getDriver(), "WebDriver should be initialized");
+        
+        // Navigate to test page
+        loginPage = new LoginPage();
+        loginPage.navigateToLoginPage();
+        
+        // Verify basic WebDriver functionality
+        String currentUrl = getDriver().getCurrentUrl();
+        String pageTitle = getDriver().getTitle();
+        
+        assertNotNull(currentUrl, "Current URL should not be null");
+        assertNotNull(pageTitle, "Page title should not be null");
+        assertTrue(currentUrl.startsWith("https://"), "URL should use HTTPS");
+        
+        System.out.println("WebDriver setup verified successfully");
+        System.out.println("Current URL: " + currentUrl);
+        System.out.println("Page Title: " + pageTitle);
+    }
 }

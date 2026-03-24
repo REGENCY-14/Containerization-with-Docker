@@ -1,17 +1,17 @@
 package com.swaglabs.base;
 
-import io.github.bonigarcia.wdm.WebDriverManager;
+import com.swaglabs.config.BrowserConfig;
+import com.swaglabs.driver.DriverFactory;
+import com.swaglabs.driver.DriverManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 
 import java.time.Duration;
 
 /**
- * Base test class that provides common setup and teardown functionality
- * for all test classes in the framework
+ * Enhanced base test class that provides WebDriver setup and teardown functionality
+ * with support for multiple browsers and configuration options
  */
 public class BaseTest {
     
@@ -19,29 +19,37 @@ public class BaseTest {
     
     @BeforeEach
     public void setUp() {
-        // Setup WebDriverManager to handle driver binaries automatically
-        WebDriverManager.chromedriver().setup();
+        // Create WebDriver instance using DriverFactory
+        driver = DriverFactory.createDriver();
         
-        // Configure Chrome options
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--disable-blink-features=AutomationControlled");
-        options.addArguments("--disable-extensions");
-        
-        // Initialize WebDriver
-        driver = new ChromeDriver(options);
+        // Set driver in DriverManager for thread-safe access
+        DriverManager.setDriver(driver);
         
         // Configure timeouts
-        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-        driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(BrowserConfig.DEFAULT_IMPLICIT_WAIT));
+        driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(BrowserConfig.DEFAULT_PAGE_LOAD_TIMEOUT));
         
-        // Maximize browser window
-        driver.manage().window().maximize();
+        // Maximize browser window (skip for headless mode)
+        if (!BrowserConfig.isHeadless()) {
+            driver.manage().window().maximize();
+        }
+        
+        // Print test configuration info
+        System.out.println("Starting test with browser: " + BrowserConfig.getBrowserType() + 
+                          " | Headless: " + BrowserConfig.isHeadless());
     }
     
     @AfterEach
     public void tearDown() {
-        if (driver != null) {
-            driver.quit();
-        }
+        // Clean up WebDriver using DriverManager
+        DriverManager.removeDriver();
+        System.out.println("Test completed and browser closed");
+    }
+    
+    /**
+     * Get current WebDriver instance
+     */
+    protected WebDriver getDriver() {
+        return DriverManager.getDriver();
     }
 }
