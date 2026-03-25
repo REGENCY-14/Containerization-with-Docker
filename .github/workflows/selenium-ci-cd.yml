@@ -127,24 +127,31 @@ jobs:
         FAILED=0
         SKIPPED=0
 
-        # Parse directly from XML files (reliable source)
         if ls target/surefire-reports/TEST-*.xml >/dev/null 2>&1; then
           for file in target/surefire-reports/TEST-*.xml; do
-            tests=$(grep -o 'tests="[0-9]*"' "$file" | grep -o '[0-9]*' | head -1)
-            failures=$(grep -o 'failures="[0-9]*"' "$file" | grep -o '[0-9]*' | head -1)
-            errors=$(grep -o 'errors="[0-9]*"' "$file" | grep -o '[0-9]*' | head -1)
-            skipped=$(grep -o 'skipped="[0-9]*"' "$file" | grep -o '[0-9]*' | head -1)
+            # Skip suite runner files - they re-report tests from individual class files
+            if grep -q '<testsuite.*SwagLabsTestSuite\|<testsuite.*Suite' "$file" 2>/dev/null; then
+              continue
+            fi
 
-            TOTAL=$((TOTAL + ${tests:-0}))
-            FAILED=$((FAILED + ${failures:-0} + ${errors:-0}))
-            SKIPPED=$((SKIPPED + ${skipped:-0}))
+            # Count individual <testcase> elements to avoid attribute-level discrepancies
+            file_total=$(grep -c '<testcase ' "$file" 2>/dev/null || echo 0)
+            file_failed=$(grep -c '<failure\|<error' "$file" 2>/dev/null || echo 0)
+            file_skipped=$(grep -c '<skipped' "$file" 2>/dev/null || echo 0)
+
+            TOTAL=$((TOTAL + file_total))
+            FAILED=$((FAILED + file_failed))
+            SKIPPED=$((SKIPPED + file_skipped))
           done
         fi
 
         PASSED=$((TOTAL - FAILED - SKIPPED))
 
-        FAILING_TESTS_RAW=$(grep -oh 'classname="[^"]*" name="[^"]*"' target/surefire-reports/TEST-*.xml 2>/dev/null \
-          | grep -A1 'failure\|error' || true)
+        FAILING_TESTS_RAW=$(grep -h 'classname=' target/surefire-reports/TEST-*.xml 2>/dev/null \
+          | grep -B1 'failure\|error' \
+          | grep 'classname=' \
+          | sed 's/.*classname="\([^"]*\)".*name="\([^"]*\)".*/\1.\2/' \
+          | sort -u || true)
 
         echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
         echo "total=$TOTAL" >> $GITHUB_OUTPUT
