@@ -23,36 +23,18 @@ This guide explains how to set up and configure the GitHub Actions CI/CD pipelin
 
 ## Workflow Configuration
 
-### 1. Main CI/CD Pipeline
+### Unified Workflow File
 
-**File:** `.github/workflows/ci-cd.yml`
+**File:** `.github/workflows/selenium-ci-cd.yml`
 
-**Features:**
+**All-in-One Features:**
 - Multi-browser testing (Chrome, Firefox)
 - Parallel execution with matrix strategy
-- Allure report generation
-- Artifact upload and management
-- GitHub Pages deployment
+- Scheduled and manual test execution
+- Allure report generation and deployment
 - Security scanning for pull requests
-
-### 2. Allure Report Workflow
-
-**File:** `.github/workflows/allure-report.yml`
-
-**Features:**
-- Triggered after main CI/CD completion
-- Maintains report history
-- Advanced Allure report generation
-- Automatic GitHub Pages deployment
-
-### 3. Scheduled Tests
-
-**File:** `.github/workflows/scheduled-tests.yml`
-
-**Features:**
-- Daily automated test execution
-- Manual workflow dispatch with parameters
-- Configurable browser and test suite selection
+- GitHub Pages deployment with history
+- Artifact upload and management
 
 ## Quick Start
 

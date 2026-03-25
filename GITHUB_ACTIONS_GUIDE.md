@@ -1,52 +1,43 @@
 # GitHub Actions CI/CD Guide
 
-This guide explains the GitHub Actions workflows implemented for the Swag Labs UI automation project with Allure Reports integration.
+This guide explains the unified GitHub Actions workflow implemented for the Swag Labs UI automation project with Allure Reports integration.
 
-## Workflows Overview
+## Unified Workflow Overview
 
-### 1. Main CI/CD Pipeline (`ci-cd.yml`)
+### Single Workflow File (`selenium-ci-cd.yml`)
+
+**All functionality consolidated into one comprehensive workflow:**
 
 **Triggers:**
 - Push to `main`, `dev`, or `feature/**` branches
 - Pull requests to `main` or `dev` branches
+- Daily scheduled execution at 2 AM UTC
+- Manual workflow dispatch with parameters
 
 **Jobs:**
 - **test**: Runs Selenium tests with matrix strategy (Chrome & Firefox)
-- **deploy-allure-report**: Deploys Allure reports to GitHub Pages (main branch only)
+- **scheduled-test**: Handles scheduled and manual test execution
 - **security-scan**: Runs OWASP dependency check (PR only)
-
-### 2. Allure Report Generation (`allure-report.yml`)
-
-**Triggers:**
-- Completion of main CI/CD workflow on `main` branch
-
-**Purpose:**
-- Generates comprehensive Allure reports from test results
-- Maintains report history
-- Deploys to GitHub Pages with historical data
-
-### 3. Scheduled Tests (`scheduled-tests.yml`)
-
-**Triggers:**
-- Daily at 2 AM UTC (cron schedule)
-- Manual workflow dispatch with parameters
-
-**Features:**
-- Configurable browser selection
-- Test suite selection (all, login, smoke)
-- Headless mode toggle
+- **deploy-allure-report**: Deploys Allure reports to GitHub Pages (main branch only)
+- **generate-allure-history**: Creates advanced Allure reports with historical data
 
 ## Workflow Details
 
-### Main CI/CD Pipeline
+### Unified Trigger Configuration
 
 ```yaml
-# Trigger Configuration
 on:
   push:
     branches: [ main, dev, feature/** ]
   pull_request:
     branches: [ main, dev ]
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      browser: [chrome, firefox, edge]
+      test_suite: [all, login, smoke]
+      headless: [true, false]
 ```
 
 #### Test Job Matrix Strategy

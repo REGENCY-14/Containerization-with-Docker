@@ -1,0 +1,313 @@
+name: Selenium CI/CD Pipeline with Allure Reports
+
+on:
+  push:
+    branches: [ main, dev, feature/** ]
+  pull_request:
+    branches: [ main, dev ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      browser:
+        description: 'Browser to run tests on'
+        required: true
+        default: 'chrome'
+        type: choice
+        options:
+        - chrome
+        - firefox
+        - edge
+      test_suite:
+        description: 'Test suite to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - login
+        - smoke
+      headless:
+        description: 'Run in headless mode'
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  # Main test execution job with matrix strategy
+  test:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+    
+    strategy:
+      matrix:
+        browser: [chrome, firefox]
+        
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+        
+    - name: Install Chrome browser
+      uses: browser-actions/setup-chrome@latest
+      
+    - name: Install Firefox browser
+      uses: browser-actions/setup-firefox@latest
+      
+    - name: Run tests with Maven
+      run: |
+        mvn clean test -Dbrowser=${{ matrix.browser }} -Dheadless=true
+      env:
+        DISPLAY: :99
+        
+    - name: Generate Allure Report
+      if: always()
+      run: |
+        mvn allure:report
+        
+    - name: Upload Allure Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: allure-results-${{ matrix.browser }}
+        path: target/allure-results/
+        retention-days: 30
+        
+    - name: Upload Allure Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: allure-report-${{ matrix.browser }}
+        path: target/allure-report/
+        retention-days: 30
+        
+    - name: Upload Test Screenshots (if any)
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-screenshots-${{ matrix.browser }}
+        path: target/screenshots/
+        retention-days: 7
+        if-no-files-found: ignore
+
+  # Scheduled and manual test execution
+  scheduled-test:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+        
+    - name: Install browsers
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable firefox
+        
+    - name: Set test parameters
+      id: test-params
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "browser=${{ github.event.inputs.browser }}" >> $GITHUB_OUTPUT
+          echo "headless=${{ github.event.inputs.headless }}" >> $GITHUB_OUTPUT
+          echo "test_suite=${{ github.event.inputs.test_suite }}" >> $GITHUB_OUTPUT
+        else
+          echo "browser=chrome" >> $GITHUB_OUTPUT
+          echo "headless=true" >> $GITHUB_OUTPUT
+          echo "test_suite=all" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Run tests
+      run: |
+        if [ "${{ steps.test-params.outputs.test_suite }}" = "login" ]; then
+          mvn test -Dtest=LoginTest -Dbrowser=${{ steps.test-params.outputs.browser }} -Dheadless=${{ steps.test-params.outputs.headless }}
+        elif [ "${{ steps.test-params.outputs.test_suite }}" = "smoke" ]; then
+          mvn test -Dgroups=smoke -Dbrowser=${{ steps.test-params.outputs.browser }} -Dheadless=${{ steps.test-params.outputs.headless }}
+        else
+          mvn test -Dbrowser=${{ steps.test-params.outputs.browser }} -Dheadless=${{ steps.test-params.outputs.headless }}
+        fi
+        
+    - name: Generate Allure Report
+      if: always()
+      run: mvn allure:report
+      
+    - name: Upload Allure Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: scheduled-allure-results-${{ steps.test-params.outputs.browser }}
+        path: target/allure-results/
+        retention-days: 30
+        
+    - name: Upload Test Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: scheduled-test-report-${{ steps.test-params.outputs.browser }}
+        path: target/surefire-reports/
+        retention-days: 30
+
+  # Security scanning for pull requests
+  security-scan:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+        
+    - name: Run OWASP Dependency Check
+      run: |
+        mvn org.owasp:dependency-check-maven:check
+        
+    - name: Upload Security Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-report
+        path: target/dependency-check-report.html
+        retention-days: 30
+
+  # Deploy Allure reports to GitHub Pages (main branch only)
+  deploy-allure-report:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+        
+    - name: Download Allure Results - Chrome
+      uses: actions/download-artifact@v4
+      with:
+        name: allure-results-chrome
+        path: target/allure-results-chrome/
+        
+    - name: Download Allure Results - Firefox
+      uses: actions/download-artifact@v4
+      with:
+        name: allure-results-firefox
+        path: target/allure-results-firefox/
+        
+    - name: Merge Allure Results
+      run: |
+        mkdir -p target/allure-results-merged
+        cp -r target/allure-results-chrome/* target/allure-results-merged/ 2>/dev/null || true
+        cp -r target/allure-results-firefox/* target/allure-results-merged/ 2>/dev/null || true
+        
+    - name: Generate Combined Allure Report
+      run: |
+        mvn allure:report -Dallure.results.directory=target/allure-results-merged
+        
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: target/allure-report
+        destination_dir: allure-report
+
+  # Advanced Allure report generation with history
+  generate-allure-history:
+    needs: deploy-allure-report
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Download Allure Results - Chrome
+      uses: actions/download-artifact@v4
+      with:
+        name: allure-results-chrome
+        path: allure-results-chrome/
+        
+    - name: Download Allure Results - Firefox
+      uses: actions/download-artifact@v4
+      with:
+        name: allure-results-firefox
+        path: allure-results-firefox/
+        
+    - name: Merge Results for History
+      run: |
+        mkdir -p allure-results
+        cp -r allure-results-chrome/* allure-results/ 2>/dev/null || true
+        cp -r allure-results-firefox/* allure-results/ 2>/dev/null || true
+        
+    - name: Get Allure history
+      uses: actions/checkout@v4
+      if: always()
+      continue-on-error: true
+      with:
+        ref: gh-pages
+        path: gh-pages
+        
+    - name: Allure Report action with history
+      uses: simple-elf/allure-report-action@master
+      if: always()
+      id: allure-report
+      with:
+        allure_results: allure-results
+        allure_history: allure-history
+        keep_reports: 20
+        
+    - name: Deploy report with history to Github Pages
+      if: always()
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: allure-history
+        destination_dir: allure-history
