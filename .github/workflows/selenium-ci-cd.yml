@@ -102,6 +102,105 @@ jobs:
         path: target/screenshots/
         retention-days: 7
         if-no-files-found: ignore
+        
+    - name: Parse Test Results
+      if: always()
+      id: test-results
+      run: |
+        # Parse surefire reports to get test statistics
+        if [ -f "target/surefire-reports/TEST-*.xml" ]; then
+          TOTAL=$(grep -o 'tests="[0-9]*"' target/surefire-reports/TEST-*.xml | grep -o '[0-9]*' | awk '{sum += $1} END {print sum}')
+          FAILURES=$(grep -o 'failures="[0-9]*"' target/surefire-reports/TEST-*.xml | grep -o '[0-9]*' | awk '{sum += $1} END {print sum}')
+          ERRORS=$(grep -o 'errors="[0-9]*"' target/surefire-reports/TEST-*.xml | grep -o '[0-9]*' | awk '{sum += $1} END {print sum}')
+          SKIPPED=$(grep -o 'skipped="[0-9]*"' target/surefire-reports/TEST-*.xml | grep -o '[0-9]*' | awk '{sum += $1} END {print sum}')
+          
+          # Handle empty values
+          TOTAL=${TOTAL:-0}
+          FAILURES=${FAILURES:-0}
+          ERRORS=${ERRORS:-0}
+          SKIPPED=${SKIPPED:-0}
+          
+          PASSED=$((TOTAL - FAILURES - ERRORS - SKIPPED))
+          
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "failed=$((FAILURES + ERRORS))" >> $GITHUB_OUTPUT
+          echo "skipped=$SKIPPED" >> $GITHUB_OUTPUT
+        else
+          echo "total=0" >> $GITHUB_OUTPUT
+          echo "passed=0" >> $GITHUB_OUTPUT
+          echo "failed=0" >> $GITHUB_OUTPUT
+          echo "skipped=0" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Notify Slack - Test Results
+      if: always()
+      uses: slackapi/slack-github-action@v1.27.0
+      with:
+        payload: |
+          {
+            "text": "🧪 Selenium Test Results - ${{ matrix.browser }}",
+            "blocks": [
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": "🧪 Selenium Test Execution Complete"
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Repository:*\n${{ github.repository }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Branch:*\n${{ github.ref_name }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Commit SHA:*\n${{ github.sha }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Browser:*\n${{ matrix.browser }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Job Status:*\n${{ job.status == 'success' && '✅ Success' || '❌ Failed' }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Trigger:*\n${{ github.event_name }}"
+                  }
+                ]
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Test Summary:*\n📊 Total: ${{ steps.test-results.outputs.total }} | ✅ Passed: ${{ steps.test-results.outputs.passed }} | ❌ Failed: ${{ steps.test-results.outputs.failed }} | ⏭️ Skipped: ${{ steps.test-results.outputs.skipped }}"
+                }
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View GitHub Actions Run"
+                    },
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   # Scheduled and manual test execution
   scheduled-test:
@@ -172,6 +271,105 @@ jobs:
         name: scheduled-test-report-${{ steps.test-params.outputs.browser }}
         path: target/surefire-reports/
         retention-days: 30
+        
+    - name: Parse Scheduled Test Results
+      if: always()
+      id: scheduled-test-results
+      run: |
+        # Parse surefire reports to get test statistics
+        if [ -f "target/surefire-reports/TEST-*.xml" ]; then
+          TOTAL=$(grep -o 'tests="[0-9]*"' target/surefire-reports/TEST-*.xml | grep -o '[0-9]*' | awk '{sum += $1} END {print sum}')
+          FAILURES=$(grep -o 'failures="[0-9]*"' target/surefire-reports/TEST-*.xml | grep -o '[0-9]*' | awk '{sum += $1} END {print sum}')
+          ERRORS=$(grep -o 'errors="[0-9]*"' target/surefire-reports/TEST-*.xml | grep -o '[0-9]*' | awk '{sum += $1} END {print sum}')
+          SKIPPED=$(grep -o 'skipped="[0-9]*"' target/surefire-reports/TEST-*.xml | grep -o '[0-9]*' | awk '{sum += $1} END {print sum}')
+          
+          # Handle empty values
+          TOTAL=${TOTAL:-0}
+          FAILURES=${FAILURES:-0}
+          ERRORS=${ERRORS:-0}
+          SKIPPED=${SKIPPED:-0}
+          
+          PASSED=$((TOTAL - FAILURES - ERRORS - SKIPPED))
+          
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "failed=$((FAILURES + ERRORS))" >> $GITHUB_OUTPUT
+          echo "skipped=$SKIPPED" >> $GITHUB_OUTPUT
+        else
+          echo "total=0" >> $GITHUB_OUTPUT
+          echo "passed=0" >> $GITHUB_OUTPUT
+          echo "failed=0" >> $GITHUB_OUTPUT
+          echo "skipped=0" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Notify Slack - Scheduled Test Results
+      if: always()
+      uses: slackapi/slack-github-action@v1.27.0
+      with:
+        payload: |
+          {
+            "text": "⏰ Scheduled Selenium Test Results",
+            "blocks": [
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": "⏰ Scheduled Selenium Test Execution Complete"
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Repository:*\n${{ github.repository }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Branch:*\n${{ github.ref_name }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Commit SHA:*\n${{ github.sha }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Browser:*\n${{ steps.test-params.outputs.browser }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Job Status:*\n${{ job.status == 'success' && '✅ Success' || '❌ Failed' }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Test Suite:*\n${{ steps.test-params.outputs.test_suite }}"
+                  }
+                ]
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Test Summary:*\n📊 Total: ${{ steps.scheduled-test-results.outputs.total }} | ✅ Passed: ${{ steps.scheduled-test-results.outputs.passed }} | ❌ Failed: ${{ steps.scheduled-test-results.outputs.failed }} | ⏭️ Skipped: ${{ steps.scheduled-test-results.outputs.skipped }}"
+                }
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View GitHub Actions Run"
+                    },
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   # Security scanning for pull requests
   security-scan:
@@ -206,6 +404,110 @@ jobs:
         name: security-report
         path: target/dependency-check-report.html
         retention-days: 30
+        
+    - name: Parse Security Scan Results
+      if: always()
+      id: security-results
+      run: |
+        # Check if security report exists and parse results
+        if [ -f "target/dependency-check-report.html" ]; then
+          # Extract vulnerability counts from the HTML report
+          CRITICAL=$(grep -o "Critical.*[0-9]" target/dependency-check-report.html | grep -o "[0-9]*" | head -1 || echo "0")
+          HIGH=$(grep -o "High.*[0-9]" target/dependency-check-report.html | grep -o "[0-9]*" | head -1 || echo "0")
+          MEDIUM=$(grep -o "Medium.*[0-9]" target/dependency-check-report.html | grep -o "[0-9]*" | head -1 || echo "0")
+          LOW=$(grep -o "Low.*[0-9]" target/dependency-check-report.html | grep -o "[0-9]*" | head -1 || echo "0")
+          
+          # Handle empty values
+          CRITICAL=${CRITICAL:-0}
+          HIGH=${HIGH:-0}
+          MEDIUM=${MEDIUM:-0}
+          LOW=${LOW:-0}
+          
+          TOTAL=$((CRITICAL + HIGH + MEDIUM + LOW))
+          
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "critical=$CRITICAL" >> $GITHUB_OUTPUT
+          echo "high=$HIGH" >> $GITHUB_OUTPUT
+          echo "medium=$MEDIUM" >> $GITHUB_OUTPUT
+          echo "low=$LOW" >> $GITHUB_OUTPUT
+          echo "scan_completed=true" >> $GITHUB_OUTPUT
+        else
+          echo "total=0" >> $GITHUB_OUTPUT
+          echo "critical=0" >> $GITHUB_OUTPUT
+          echo "high=0" >> $GITHUB_OUTPUT
+          echo "medium=0" >> $GITHUB_OUTPUT
+          echo "low=0" >> $GITHUB_OUTPUT
+          echo "scan_completed=false" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Notify Slack - Security Scan Results
+      if: always()
+      uses: slackapi/slack-github-action@v1.27.0
+      with:
+        payload: |
+          {
+            "text": "🔒 Security Scan Results",
+            "blocks": [
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": "🔒 OWASP Dependency Security Scan Complete"
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Repository:*\n${{ github.repository }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Branch:*\n${{ github.ref_name }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Commit SHA:*\n${{ github.sha }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Job Status:*\n${{ job.status == 'success' && '✅ Success' || '❌ Failed' }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Scan Status:*\n${{ steps.security-results.outputs.scan_completed == 'true' && '✅ Completed' || '❌ Failed' }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Total Vulnerabilities:*\n${{ steps.security-results.outputs.total }}"
+                  }
+                ]
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Vulnerability Breakdown:*\n🔴 Critical: ${{ steps.security-results.outputs.critical }} | 🟠 High: ${{ steps.security-results.outputs.high }} | 🟡 Medium: ${{ steps.security-results.outputs.medium }} | 🟢 Low: ${{ steps.security-results.outputs.low }}"
+                }
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View GitHub Actions Run"
+                    },
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL}
 
   # Deploy Allure reports to GitHub Pages (main branch only)
   deploy-allure-report:
@@ -258,6 +560,76 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: target/allure-report
         destination_dir: allure-report
+        
+    - name: Notify Slack - Allure Report Deployment
+      if: always()
+      uses: slackapi/slack-github-action@v1.27.0
+      with:
+        payload: |
+          {
+            "text": "📊 Allure Report Deployment Complete",
+            "blocks": [
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": "📊 Allure Report Deployment Complete"
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Repository:*\n${{ github.repository }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Branch:*\n${{ github.ref_name }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Commit SHA:*\n${{ github.sha }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Job Status:*\n${{ job.status == 'success' && '✅ Success' || '❌ Failed' }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Deployment:*\n${{ job.status == 'success' && '✅ GitHub Pages Updated' || '❌ Deployment Failed' }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Report Type:*\nCombined (Chrome + Firefox)"
+                  }
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View Allure Report"
+                    },
+                    "url": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure-report/"
+                  },
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View GitHub Actions Run"
+                    },
+                    "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   # Advanced Allure report generation with history
   generate-allure-history:

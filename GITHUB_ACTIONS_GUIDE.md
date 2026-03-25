@@ -213,6 +213,88 @@ CI/CD Completion → Allure Workflow Trigger
 
 ## Monitoring and Notifications
 
+### Slack Notifications Integration
+
+The workflow includes comprehensive Slack notifications using `slackapi/slack-github-action@v1.27.0` that provide real-time updates on test execution and deployment status.
+
+#### Notification Triggers
+
+**All notifications trigger on `if: always()` to ensure you're notified of both successes and failures.**
+
+#### Notification Types
+
+1. **Test Results Notification** (Matrix Jobs)
+   - Triggered after each browser test execution
+   - Includes test statistics (total, passed, failed, skipped)
+   - Shows browser-specific results
+
+2. **Scheduled Test Notification**
+   - Triggered after scheduled or manual test execution
+   - Includes test suite information
+   - Shows comprehensive test results
+
+3. **Security Scan Notification**
+   - Triggered after OWASP dependency check (PR only)
+   - Shows vulnerability breakdown by severity
+   - Includes total vulnerability count
+
+4. **Allure Report Deployment Notification**
+   - Triggered after successful report deployment
+   - Includes direct link to published Allure report
+   - Confirms GitHub Pages deployment status
+
+#### Slack Message Format
+
+Each notification includes:
+- **Repository**: Full repository name
+- **Branch**: Current branch name
+- **Commit SHA**: Full commit hash
+- **Job Status**: Success/Failed status
+- **Test Summary**: Detailed test statistics
+- **Action Links**: Direct links to GitHub Actions run and Allure reports
+
+#### Setup Requirements
+
+**1. Create Slack Webhook**
+```
+1. Go to your Slack workspace
+2. Navigate to Apps → Incoming Webhooks
+3. Create a new webhook for your desired channel
+4. Copy the webhook URL
+```
+
+**2. Add GitHub Secret**
+```
+1. Go to Repository Settings → Secrets and Variables → Actions
+2. Click "New repository secret"
+3. Name: SLACK_WEBHOOK_URL
+4. Value: Your Slack webhook URL
+5. Click "Add secret"
+```
+
+**3. Webhook Security**
+- Webhook URL is stored securely in GitHub Secrets
+- Never exposed in logs or workflow files
+- Accessible only to authorized repository collaborators
+
+#### Sample Slack Message
+
+```
+🧪 Selenium Test Execution Complete
+
+Repository: username/selenium-project
+Branch: main
+Commit SHA: abc123def456
+Browser: chrome
+Job Status: ✅ Success
+Trigger: push
+
+Test Summary:
+📊 Total: 6 | ✅ Passed: 6 | ❌ Failed: 0 | ⏭️ Skipped: 0
+
+[View GitHub Actions Run] [View Allure Report]
+```
+
 ### Workflow Status
 
 - **Green Check**: All tests passed
