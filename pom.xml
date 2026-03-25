@@ -23,11 +23,14 @@
         <junit.version>5.10.0</junit.version>
         <junit.platform.version>1.10.0</junit.platform.version>
         <webdrivermanager.version>5.6.2</webdrivermanager.version>
+        <allure.version>2.24.0</allure.version>
+        <aspectj.version>1.9.20.1</aspectj.version>
         
         <!-- Plugin versions -->
         <maven.compiler.plugin.version>3.11.0</maven.compiler.plugin.version>
         <maven.surefire.plugin.version>3.2.2</maven.surefire.plugin.version>
         <maven.failsafe.plugin.version>3.2.2</maven.failsafe.plugin.version>
+        <allure.maven.plugin.version>2.12.0</allure.maven.plugin.version>
         
         <!-- Test execution properties -->
         <browser>chrome</browser>
@@ -73,6 +76,30 @@
             <version>${junit.platform.version}</version>
             <scope>test</scope>
         </dependency>
+        
+        <!-- Allure JUnit 5 Integration -->
+        <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-junit5</artifactId>
+            <version>${allure.version}</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- Allure Java Commons -->
+        <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-java-commons</artifactId>
+            <version>${allure.version}</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- AspectJ Weaver for Allure annotations -->
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <version>${aspectj.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -103,10 +130,20 @@
                     <systemPropertyVariables>
                         <browser>${browser}</browser>
                         <headless>${headless}</headless>
+                        <allure.results.directory>${project.build.directory}/allure-results</allure.results.directory>
                     </systemPropertyVariables>
-                    <argLine>-Dfile.encoding=UTF-8</argLine>
+                    <argLine>
+                        -Dfile.encoding=UTF-8
+                        -javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"
+                    </argLine>
                     <reportFormat>xml</reportFormat>
                     <useFile>true</useFile>
+                    <properties>
+                        <property>
+                            <name>listener</name>
+                            <value>io.qameta.allure.junit5.AllureJunit5</value>
+                        </property>
+                    </properties>
                 </configuration>
             </plugin>
             
@@ -133,6 +170,18 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            
+            <!-- Allure Maven Plugin for report generation -->
+            <plugin>
+                <groupId>io.qameta.allure</groupId>
+                <artifactId>allure-maven</artifactId>
+                <version>${allure.maven.plugin.version}</version>
+                <configuration>
+                    <reportVersion>${allure.version}</reportVersion>
+                    <resultsDirectory>${project.build.directory}/allure-results</resultsDirectory>
+                    <reportDirectory>${project.build.directory}/allure-report</reportDirectory>
+                </configuration>
             </plugin>
         </plugins>
     </build>

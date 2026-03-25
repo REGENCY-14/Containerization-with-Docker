@@ -5,6 +5,7 @@ import com.swaglabs.pages.LoginPage;
 import com.swaglabs.pages.ProductsPage;
 import com.swaglabs.utils.TestData;
 import com.swaglabs.utils.TestUtils;
+import io.qameta.allure.*;
 import org.junit.jupiter.api.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -15,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * 
  * All tests in this class are stable and fully functional
  */
+@Epic("User Authentication")
+@Feature("Login Functionality")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class LoginTest extends BaseTest {
     
@@ -44,15 +47,34 @@ public class LoginTest extends BaseTest {
     @Test
     @Order(1)
     @DisplayName("Verify successful login with valid credentials")
+    @Description("This test verifies that a user can successfully log in with valid username and password")
+    @Story("Valid Login")
+    @Severity(SeverityLevel.CRITICAL)
+    @Owner("QA Team")
+    @Link(name = "Test Case", url = "https://github.com/your-org/test-cases/TC001")
     public void testSuccessfulLogin() {
+        navigateToLoginPage();
+        performLoginWithValidCredentials();
+        verifySuccessfulLogin();
+        System.out.println("✅ Successful login test completed");
+    }
+    
+    @Step("Navigate to login page")
+    private void navigateToLoginPage() {
         TestUtils.logTestStep("Navigate to login page");
         loginPage.navigateToLoginPage();
         assertTrue(loginPage.isLoginPageLoaded(), "Login page should be loaded");
         TestUtils.logAssertion("Login page loaded", true);
-        
+    }
+    
+    @Step("Perform login with valid credentials")
+    private void performLoginWithValidCredentials() {
         TestUtils.logTestStep("Perform login with valid credentials");
         loginPage.login(TestData.VALID_USERNAME, TestData.VALID_PASSWORD);
-        
+    }
+    
+    @Step("Verify successful login")
+    private void verifySuccessfulLogin() {
         TestUtils.logTestStep("Verify successful login");
         assertTrue(productsPage.isProductsPageLoaded(), "Products page should be loaded after successful login");
         TestUtils.logAssertion("Products page loaded", true);
@@ -65,8 +87,6 @@ public class LoginTest extends BaseTest {
         
         assertFalse(loginPage.isErrorMessageDisplayed(), "No error message should be displayed after successful login");
         TestUtils.logAssertion("No error message displayed", true);
-        
-        System.out.println("✅ Successful login test completed");
     }
     
     @Test

@@ -14,7 +14,7 @@ public class BrowserConfig {
     
     // Default configuration values
     public static final BrowserType DEFAULT_BROWSER = BrowserType.CHROME;
-    public static final boolean DEFAULT_HEADLESS = false;
+    public static final boolean DEFAULT_HEADLESS = true;
     public static final int DEFAULT_IMPLICIT_WAIT = 10;
     public static final int DEFAULT_PAGE_LOAD_TIMEOUT = 30;
     public static final int DEFAULT_EXPLICIT_WAIT = 15;
