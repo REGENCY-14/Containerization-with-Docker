@@ -1,7 +1,7 @@
-# Compiled class files
+# Compiled class file
 *.class
 
-# Log files
+# Log file
 *.log
 
 # BlueJ files
@@ -10,7 +10,7 @@
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
-# Package Files
+# Package Files #
 *.jar
 *.war
 *.nar
@@ -19,8 +19,9 @@
 *.tar.gz
 *.rar
 
-# Virtual machine crash logs
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
+replay_pid*
 
 # Maven
 target/
@@ -34,7 +35,7 @@ buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
 
-# IDE files
+# IDE
 .idea/
 *.iws
 *.iml
@@ -44,16 +45,23 @@ buildNumber.properties
 .project
 .classpath
 
-# OS generated files
+# OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
-# Test reports
+# Test results
 test-output/
 screenshots/
-reports/
+allure-results/
+allure-report/
+
+# Allure CLI (downloaded by Maven plugin)
+.allure/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+*.temp
