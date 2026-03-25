@@ -127,30 +127,37 @@ jobs:
         FAILED=0
         SKIPPED=0
 
+        echo "=== Surefire XML files found ==="
+        ls target/surefire-reports/TEST-*.xml 2>/dev/null || echo "none"
+
         if ls target/surefire-reports/TEST-*.xml >/dev/null 2>&1; then
           for file in target/surefire-reports/TEST-*.xml; do
-            # Skip suite runner files - they re-report tests from individual class files
-            if grep -q '<testsuite.*SwagLabsTestSuite\|<testsuite.*Suite' "$file" 2>/dev/null; then
+            filename=$(basename "$file")
+            # Skip only the exact suite runner file by filename
+            if echo "$filename" | grep -q 'TestSuite\|Suite\.'; then
+              echo "SKIPPING suite file: $filename"
               continue
             fi
 
-            # Count individual <testcase> elements to avoid attribute-level discrepancies
-            file_total=$(grep -c '<testcase ' "$file" 2>/dev/null || echo 0)
-            file_failed=$(grep -c '<failure\|<error' "$file" 2>/dev/null || echo 0)
-            file_skipped=$(grep -c '<skipped' "$file" 2>/dev/null || echo 0)
+            tests=$(grep -m1 'tests="[0-9]*"' "$file" | grep -o 'tests="[0-9]*"' | grep -o '[0-9]*')
+            failures=$(grep -m1 'failures="[0-9]*"' "$file" | grep -o 'failures="[0-9]*"' | grep -o '[0-9]*')
+            errors=$(grep -m1 'errors="[0-9]*"' "$file" | grep -o 'errors="[0-9]*"' | grep -o '[0-9]*')
+            skipped=$(grep -m1 'skipped="[0-9]*"' "$file" | grep -o 'skipped="[0-9]*"' | grep -o '[0-9]*')
 
-            TOTAL=$((TOTAL + file_total))
-            FAILED=$((FAILED + file_failed))
-            SKIPPED=$((SKIPPED + file_skipped))
+            echo "FILE: $filename | tests=${tests:-0} failures=${failures:-0} errors=${errors:-0} skipped=${skipped:-0}"
+
+            TOTAL=$((TOTAL + ${tests:-0}))
+            FAILED=$((FAILED + ${failures:-0} + ${errors:-0}))
+            SKIPPED=$((SKIPPED + ${skipped:-0}))
           done
         fi
 
         PASSED=$((TOTAL - FAILED - SKIPPED))
+        echo "=== FINAL: total=$TOTAL passed=$PASSED failed=$FAILED skipped=$SKIPPED ==="
 
-        FAILING_TESTS_RAW=$(grep -h 'classname=' target/surefire-reports/TEST-*.xml 2>/dev/null \
-          | grep -B1 'failure\|error' \
-          | grep 'classname=' \
-          | sed 's/.*classname="\([^"]*\)".*name="\([^"]*\)".*/\1.\2/' \
+        FAILING_TESTS_RAW=$(grep -oh 'name="[^"]*"' target/surefire-reports/TEST-*.xml 2>/dev/null \
+          | grep -v 'TestSuite\|Suite\.' \
+          | sed 's/name="//;s/"//' \
           | sort -u || true)
 
         echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
