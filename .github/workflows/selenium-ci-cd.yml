@@ -32,7 +32,7 @@ jobs:
         cache: 'maven'
         
     - name: Run tests with Maven
-      run: mvn clean test -Dheadless=true
+      run: mvn clean test -Dheadless=true | tee maven-test-output.txt
       
     - name: Get Allure history
       uses: actions/checkout@v4
@@ -127,47 +127,30 @@ jobs:
         FAILED=0
         SKIPPED=0
 
-        echo "=== Surefire XML files found ==="
-        ls target/surefire-reports/TEST-*.xml 2>/dev/null || echo "none"
-
-        if ls target/surefire-reports/TEST-*.xml >/dev/null 2>&1; then
-          for file in target/surefire-reports/TEST-*.xml; do
-            filename=$(basename "$file")
-            # Skip only the exact suite runner file by filename
-            if echo "$filename" | grep -q 'TestSuite\|Suite\.'; then
-              echo "SKIPPING suite file: $filename"
-              continue
+        # Parse directly from Maven's own summary line in the build log
+        # Maven prints: "Tests run: X, Failures: Y, Errors: Z, Skipped: W"
+        if [ -f maven-test-output.txt ]; then
+          while IFS= read -r line; do
+            RUN=$(echo "$line"   | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p')
+            FAIL=$(echo "$line"  | sed -n 's/.*Failures: \([0-9]*\).*/\1/p')
+            ERR=$(echo "$line"   | sed -n 's/.*Errors: \([0-9]*\).*/\1/p')
+            SKIP=$(echo "$line"  | sed -n 's/.*Skipped: \([0-9]*\).*/\1/p')
+            if [ -n "$RUN" ]; then
+              TOTAL=$((TOTAL + RUN))
+              FAILED=$((FAILED + ${FAIL:-0} + ${ERR:-0}))
+              SKIPPED=$((SKIPPED + ${SKIP:-0}))
             fi
-
-            tests=$(grep -m1 'tests="[0-9]*"' "$file" | grep -o 'tests="[0-9]*"' | grep -o '[0-9]*')
-            failures=$(grep -m1 'failures="[0-9]*"' "$file" | grep -o 'failures="[0-9]*"' | grep -o '[0-9]*')
-            errors=$(grep -m1 'errors="[0-9]*"' "$file" | grep -o 'errors="[0-9]*"' | grep -o '[0-9]*')
-            skipped=$(grep -m1 'skipped="[0-9]*"' "$file" | grep -o 'skipped="[0-9]*"' | grep -o '[0-9]*')
-
-            echo "FILE: $filename | tests=${tests:-0} failures=${failures:-0} errors=${errors:-0} skipped=${skipped:-0}"
-
-            TOTAL=$((TOTAL + ${tests:-0}))
-            FAILED=$((FAILED + ${failures:-0} + ${errors:-0}))
-            SKIPPED=$((SKIPPED + ${skipped:-0}))
-          done
+          done < <(grep "Tests run:" maven-test-output.txt | grep -v "BUILD\|Results\|---")
         fi
 
         PASSED=$((TOTAL - FAILED - SKIPPED))
         echo "=== FINAL: total=$TOTAL passed=$PASSED failed=$FAILED skipped=$SKIPPED ==="
 
-        FAILING_TESTS_RAW=$(grep -oh 'name="[^"]*"' target/surefire-reports/TEST-*.xml 2>/dev/null \
-          | grep -v 'TestSuite\|Suite\.' \
-          | sed 's/name="//;s/"//' \
-          | sort -u || true)
-
         echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
-        echo "total=$TOTAL" >> $GITHUB_OUTPUT
+        echo "total=$TOTAL"   >> $GITHUB_OUTPUT
         echo "passed=$PASSED" >> $GITHUB_OUTPUT
         echo "failed=$FAILED" >> $GITHUB_OUTPUT
         echo "skipped=$SKIPPED" >> $GITHUB_OUTPUT
-        echo "failing_tests_raw<<EOF" >> $GITHUB_OUTPUT
-        echo "$FAILING_TESTS_RAW" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
         
     - name: Slack notification
       if: always()
