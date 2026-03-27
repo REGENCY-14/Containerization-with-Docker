@@ -59,7 +59,7 @@ if $DEBUG_MODE; then
   echo "   Run tests manually: mvn clean test -Dheadless=true -Dbrowser=chrome"
   docker run -it \
     --shm-size=2g \
-    -v "$TARGET_DIR:/app/target" \
+    -v "$TARGET_DIR:/output" \
     --name "$CONTAINER_NAME" \
     --entrypoint /bin/bash \
     "$IMAGE_NAME"
@@ -67,7 +67,7 @@ else
   echo "🚀 Running Selenium tests inside Docker..."
   docker run \
     --shm-size=2g \
-    -v "$TARGET_DIR:/app/target" \
+    -v "$TARGET_DIR:/output" \
     --name "$CONTAINER_NAME" \
     "$IMAGE_NAME"
 

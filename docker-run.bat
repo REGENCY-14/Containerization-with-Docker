@@ -52,7 +52,7 @@ IF "%DEBUG_MODE%"=="true" (
   ECHO [DEBUG] Starting container in interactive mode...
   docker run -it ^
     --shm-size=2g ^
-    -v "%TARGET_DIR%:/app/target" ^
+    -v "%TARGET_DIR%:/output" ^
     --name %CONTAINER_NAME% ^
     --entrypoint /bin/bash ^
     %IMAGE_NAME%
@@ -60,7 +60,7 @@ IF "%DEBUG_MODE%"=="true" (
   ECHO [..] Running Selenium tests inside Docker...
   docker run ^
     --shm-size=2g ^
-    -v "%TARGET_DIR%:/app/target" ^
+    -v "%TARGET_DIR%:/output" ^
     --name %CONTAINER_NAME% ^
     %IMAGE_NAME%
 

@@ -104,11 +104,14 @@ ENV BROWSER=chrome
 ENV HEADLESS=true
 
 # -----------------------------------------------------------------------------
-# Run the tests in headless mode when the container starts.
-# NOTE: No VOLUME declaration here — the mount is handled at docker run time
-# via -v ./target:/app/target which avoids permission conflicts with mvn clean.
-# -Dheadless=true  → ChromeOptions adds --headless flag
-# -Dbrowser=chrome → DriverFactory creates ChromeDriver
-# -B               → Maven batch mode (no progress bars, cleaner logs)
+# Copy entrypoint script and make it executable
 # -----------------------------------------------------------------------------
-CMD ["mvn", "clean", "test", "-Dheadless=true", "-Dbrowser=chrome", "-B", "--no-transfer-progress"]
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# -----------------------------------------------------------------------------
+# Run tests via entrypoint. Maven writes freely to /app/target (no mount),
+# then results are copied to /output which is the bind-mounted directory.
+# Mount: docker run -v ./target:/output
+# -----------------------------------------------------------------------------
+ENTRYPOINT ["/entrypoint.sh"]

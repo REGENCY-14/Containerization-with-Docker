@@ -17,7 +17,7 @@ services:
     # Mount local target/ directory so Allure results and Surefire reports
     # persist on the host after the container exits
     volumes:
-      - ./target:/app/target
+      - ./target:/output
 
     # Environment overrides — can be changed here without rebuilding the image
     environment:
