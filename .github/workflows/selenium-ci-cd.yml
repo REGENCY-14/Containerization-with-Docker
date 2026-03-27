@@ -25,11 +25,40 @@ jobs:
       uses: actions/checkout@v4
 
     # -------------------------------------------------------------------------
-    # Build the Docker image from the project Dockerfile.
-    # This installs JDK 17, Maven, Chrome, and ChromeDriver inside the image.
+    # Cache Docker layers using GitHub Actions cache.
+    # The cache key is based on the Dockerfile and entrypoint so it only
+    # invalidates when those files actually change, not on every push.
+    # -------------------------------------------------------------------------
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Cache Docker layers
+      uses: actions/cache@v4
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile', 'entrypoint.sh', 'pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+
+    # -------------------------------------------------------------------------
+    # Build the Docker image with layer cache enabled.
+    # cache-from/cache-to reuses layers from previous runs stored in the cache.
     # -------------------------------------------------------------------------
     - name: Build Docker image
-      run: docker build -t selenium-tests .
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: false
+        load: true
+        tags: selenium-tests:latest
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+    # Rotate cache to prevent unbounded growth
+    - name: Rotate build cache
+      run: |
+        rm -rf /tmp/.buildx-cache
+        mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
     # -------------------------------------------------------------------------
     # Create the output directory on the runner before mounting it.
@@ -40,19 +69,20 @@ jobs:
 
     # -------------------------------------------------------------------------
     # Run tests inside the Docker container.
-    # --shm-size=2g   → prevents Chrome from crashing due to low shared memory
-    # -v .../target:/output → entrypoint.sh copies allure-results and
-    #                         surefire-reports here after the test run
-    # | tee            → captures Maven output for test count parsing later
+    # --shm-size=2g        → prevents Chrome crashing due to low shared memory
+    # -v .../target:/output → entrypoint copies results here after tests finish
+    # pipefail + tee       → captures Maven output AND preserves the exit code
+    # TEST_TIMEOUT_MINUTES → kills hung tests after 25 min (CI job limit is 30)
     # -------------------------------------------------------------------------
     - name: Run tests in Docker
       run: |
+        set -o pipefail
         docker run \
           --shm-size=2g \
           -v ${{ github.workspace }}/target:/output \
+          -e TEST_TIMEOUT_MINUTES=25 \
           --name selenium-tests-run \
           selenium-tests | tee maven-test-output.txt
-        echo "DOCKER_EXIT_CODE=${PIPESTATUS[0]}" >> $GITHUB_ENV
 
     # -------------------------------------------------------------------------
     # Fetch the gh-pages branch so Allure can append to the existing history.
