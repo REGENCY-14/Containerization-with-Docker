@@ -53,24 +53,18 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # -----------------------------------------------------------------------------
-# Install ChromeDriver that matches the installed Chrome version.
-# Uses the Chrome for Testing JSON endpoint to get the matching driver.
+# Install ChromeDriver matching the installed Chrome version.
+# Directly constructs the download URL from the Chrome version number —
+# no JSON parsing needed, no fragile grep chains.
 # -----------------------------------------------------------------------------
-RUN CHROME_VERSION=$(google-chrome --version | grep -o '[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*') && \
-    CHROME_MAJOR=$(echo $CHROME_VERSION | cut -d. -f1) && \
-    echo "Chrome version: $CHROME_VERSION (major: $CHROME_MAJOR)" && \
-    DRIVER_URL=$(wget -qO- "https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json" \
-        | grep -o "\"chromedriver\".*linux64.*\"url\":\"[^\"]*\"" \
-        | grep "\"$CHROME_VERSION\"" \
-        | grep -o 'https://[^"]*linux64[^"]*chromedriver[^"]*\.zip' \
-        | head -1) && \
-    if [ -z "$DRIVER_URL" ]; then \
-        DRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip"; \
-    fi && \
-    echo "Downloading ChromeDriver from: $DRIVER_URL" && \
-    wget -qO /tmp/chromedriver.zip "$DRIVER_URL" && \
+RUN apt-get update && apt-get install -y --no-install-recommends unzip && \
+    rm -rf /var/lib/apt/lists/* && \
+    CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+\.\d+') && \
+    echo "Installing ChromeDriver for Chrome $CHROME_VERSION" && \
+    wget -qO /tmp/chromedriver.zip \
+        "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip" && \
     unzip -q /tmp/chromedriver.zip -d /tmp/chromedriver && \
-    find /tmp/chromedriver -name "chromedriver" -exec mv {} /usr/local/bin/chromedriver \; && \
+    mv /tmp/chromedriver/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver && \
     chmod +x /usr/local/bin/chromedriver && \
     rm -rf /tmp/chromedriver.zip /tmp/chromedriver
 
