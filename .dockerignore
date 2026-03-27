@@ -1,0 +1,23 @@
+# Build output — never copy into image, generated fresh inside container
+target/
+
+# Git history — not needed inside the image
+.git/
+.gitignore
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# Local test run artifacts
+allure-history/
+allure-report/
+maven-test-output.txt
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+
+# Documentation
+*.md

@@ -38,10 +38,24 @@ public class DriverFactory {
     }
     
     /**
+     * Returns true when running inside the Docker container.
+     * The DOCKER env var is set in the Dockerfile.
+     */
+    private static boolean isRunningInDocker() {
+        return "true".equalsIgnoreCase(System.getenv("DOCKER"));
+    }
+
+    /**
      * Create Chrome WebDriver with options
      */
     private static WebDriver createChromeDriver(boolean headless) {
-        WebDriverManager.chromedriver().setup();
+        if (isRunningInDocker()) {
+            // Inside the selenium/standalone-chrome image, ChromeDriver is already
+            // installed and on the PATH — skip WebDriverManager's network download
+            System.out.println("Docker environment detected — using system ChromeDriver");
+        } else {
+            WebDriverManager.chromedriver().setup();
+        }
         
         ChromeOptions options = new ChromeOptions();
         
