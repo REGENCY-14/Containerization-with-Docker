@@ -21,8 +21,8 @@ timeout "${TIMEOUT_MINUTES}m" mvn clean test \
     -Dheadless="${HEADLESS:-true}" \
     -Dbrowser="${BROWSER:-chrome}" \
     -B \
-    --no-transfer-progress
-EXIT_CODE=$?
+    --no-transfer-progress | tee /app/maven-test-output.txt
+EXIT_CODE=${PIPESTATUS[0]}
 
 # timeout returns 124 if the process was killed
 if [ $EXIT_CODE -eq 124 ]; then
@@ -37,6 +37,7 @@ mkdir -p "${OUTPUT_DIR}/surefire-reports"
 # Use rsync-style copy — only copy if source exists, never fail if empty
 [ -d /app/target/allure-results ]   && cp -r /app/target/allure-results/.   "${OUTPUT_DIR}/allure-results/"   || true
 [ -d /app/target/surefire-reports ] && cp -r /app/target/surefire-reports/. "${OUTPUT_DIR}/surefire-reports/" || true
+[ -f /app/maven-test-output.txt ]   && cp /app/maven-test-output.txt "${OUTPUT_DIR}/maven-test-output.txt"    || true
 
 echo ""
 if [ $EXIT_CODE -eq 0 ]; then
