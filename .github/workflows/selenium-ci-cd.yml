@@ -127,20 +127,20 @@ jobs:
         FAILED=0
         SKIPPED=0
 
-        # Parse directly from Maven's own summary line in the build log
-        # Maven prints: "Tests run: X, Failures: Y, Errors: Z, Skipped: W"
+        # Parse from Maven's final aggregate summary line only.
+        # Maven prints individual per-class lines AND a final rolled-up line after "Results:".
+        # We grab only the single line that appears directly after "[INFO] Results:" to avoid doubling.
         if [ -f maven-test-output.txt ]; then
-          while IFS= read -r line; do
-            RUN=$(echo "$line"   | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p')
-            FAIL=$(echo "$line"  | sed -n 's/.*Failures: \([0-9]*\).*/\1/p')
-            ERR=$(echo "$line"   | sed -n 's/.*Errors: \([0-9]*\).*/\1/p')
-            SKIP=$(echo "$line"  | sed -n 's/.*Skipped: \([0-9]*\).*/\1/p')
-            if [ -n "$RUN" ]; then
-              TOTAL=$((TOTAL + RUN))
-              FAILED=$((FAILED + ${FAIL:-0} + ${ERR:-0}))
-              SKIPPED=$((SKIPPED + ${SKIP:-0}))
-            fi
-          done < <(grep "Tests run:" maven-test-output.txt | grep -v "BUILD\|Results\|---")
+          summary_line=$(grep -A5 '\[INFO\] Results:' maven-test-output.txt \
+            | grep 'Tests run:' | tail -1)
+          echo "Maven summary line: $summary_line"
+          TOTAL=$(echo "$summary_line" | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p')
+          FAIL=$(echo "$summary_line"  | sed -n 's/.*Failures: \([0-9]*\).*/\1/p')
+          ERR=$(echo "$summary_line"   | sed -n 's/.*Errors: \([0-9]*\).*/\1/p')
+          SKIPPED=$(echo "$summary_line" | sed -n 's/.*Skipped: \([0-9]*\).*/\1/p')
+          TOTAL=${TOTAL:-0}
+          FAILED=$((${FAIL:-0} + ${ERR:-0}))
+          SKIPPED=${SKIPPED:-0}
         fi
 
         PASSED=$((TOTAL - FAILED - SKIPPED))
