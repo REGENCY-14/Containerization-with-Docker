@@ -82,7 +82,7 @@ jobs:
           -v ${{ github.workspace }}/target:/output \
           -e TEST_TIMEOUT_MINUTES=25 \
           --name selenium-tests-run \
-          selenium-tests | tee maven-test-output.txt
+          selenium-tests
 
     # -------------------------------------------------------------------------
     # Fetch the gh-pages branch so Allure can append to the existing history.
@@ -194,17 +194,28 @@ jobs:
         FAILED=0
         SKIPPED=0
 
-        if [ -f maven-test-output.txt ]; then
-          summary_line=$(grep -A5 '\[INFO\] Results:' maven-test-output.txt \
-            | grep 'Tests run:' | tail -1)
-          echo "Maven summary line: $summary_line"
-          TOTAL=$(echo "$summary_line"   | sed -n 's/.*Tests run: \([0-9]*\).*/\1/p')
-          FAIL=$(echo "$summary_line"    | sed -n 's/.*Failures: \([0-9]*\).*/\1/p')
-          ERR=$(echo "$summary_line"     | sed -n 's/.*Errors: \([0-9]*\).*/\1/p')
-          SKIPPED=$(echo "$summary_line" | sed -n 's/.*Skipped: \([0-9]*\).*/\1/p')
-          TOTAL=${TOTAL:-0}
-          FAILED=$((${FAIL:-0} + ${ERR:-0}))
-          SKIPPED=${SKIPPED:-0}
+        # Primary: parse surefire XML files copied out of the container by entrypoint.sh
+        # This is the most reliable source — same data Allure reads
+        if ls target/surefire-reports/TEST-*.xml >/dev/null 2>&1; then
+          echo "Parsing from surefire XML files..."
+          for file in target/surefire-reports/TEST-*.xml; do
+            filename=$(basename "$file")
+            # Skip suite runner files — they re-report the same tests
+            if echo "$filename" | grep -q 'Suite'; then
+              echo "  Skipping suite file: $filename"
+              continue
+            fi
+            tests=$(grep -m1 '<testsuite ' "$file" | grep -o 'tests="[0-9]*"' | grep -o '[0-9]*')
+            failures=$(grep -m1 '<testsuite ' "$file" | grep -o 'failures="[0-9]*"' | grep -o '[0-9]*')
+            errors=$(grep -m1 '<testsuite ' "$file" | grep -o 'errors="[0-9]*"' | grep -o '[0-9]*')
+            skipped=$(grep -m1 '<testsuite ' "$file" | grep -o 'skipped="[0-9]*"' | grep -o '[0-9]*')
+            echo "  $filename: tests=${tests:-0} failures=${failures:-0} errors=${errors:-0} skipped=${skipped:-0}"
+            TOTAL=$((TOTAL + ${tests:-0}))
+            FAILED=$((FAILED + ${failures:-0} + ${errors:-0}))
+            SKIPPED=$((SKIPPED + ${skipped:-0}))
+          done
+        else
+          echo "No surefire XML files found — results may not have been copied out of container"
         fi
 
         PASSED=$((TOTAL - FAILED - SKIPPED))
