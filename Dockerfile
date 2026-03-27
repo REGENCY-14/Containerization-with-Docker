@@ -55,14 +55,32 @@ RUN wget -qO /tmp/maven.tar.gz ${MAVEN_URL} && \
     ln -s /opt/apache-maven-${MAVEN_VERSION} /opt/maven && \
     rm /tmp/maven.tar.gz
 
-ENV JAVA_HOME=/usr/lib/jvm/temurin-17-amd64
+# Detect the actual JDK path dynamically instead of hardcoding the arch suffix
+RUN JAVA_HOME_PATH=$(dirname $(dirname $(readlink -f $(which java)))) && \
+    echo "JAVA_HOME=$JAVA_HOME_PATH" >> /etc/environment && \
+    echo "export JAVA_HOME=$JAVA_HOME_PATH" >> /etc/profile.d/java.sh && \
+    echo "export JAVA_HOME=$JAVA_HOME_PATH" >> /root/.bashrc
+
 ENV MAVEN_HOME=/opt/maven
-ENV PATH="${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${PATH}"
+
+# Set JAVA_HOME by resolving the real path at build time
+RUN echo "export PATH=$MAVEN_HOME/bin:\$JAVA_HOME/bin:\$PATH" >> /etc/profile.d/java.sh
+
+# Use shell form to evaluate JAVA_HOME dynamically
+RUN JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java)))) && \
+    ln -sfn $JAVA_HOME /usr/lib/jvm/java-17 && \
+    echo "Resolved JAVA_HOME: $JAVA_HOME"
+
+ENV JAVA_HOME=/usr/lib/jvm/java-17
+ENV PATH="${MAVEN_HOME}/bin:${JAVA_HOME}/bin:${PATH}"
 
 # -----------------------------------------------------------------------------
 # Set working directory for the project
 # -----------------------------------------------------------------------------
 WORKDIR /app
+
+# Verify Java and Maven are correctly configured
+RUN java -version && mvn -version
 
 # -----------------------------------------------------------------------------
 # Copy pre-downloaded Maven dependencies from Stage 1
