@@ -12,25 +12,24 @@ RUN mvn dependency:go-offline -B --no-transfer-progress
 
 # =============================================================================
 # Stage 2: Runtime image
-# Uses maven:eclipse-temurin-17 (JDK 17 + Maven pre-installed) as the base.
-# We install Google Chrome on top — ChromeDriver is managed by WebDriverManager.
-# This avoids the complexity of layering Java onto selenium/standalone-chrome.
+# maven:eclipse-temurin-17 already has JDK 17 + Maven.
+# We install Google Chrome — WebDriverManager downloads the matching
+# ChromeDriver automatically at test runtime (no version pinning needed).
 # =============================================================================
 FROM maven:3.9.6-eclipse-temurin-17
 
 USER root
 
 # -----------------------------------------------------------------------------
-# Install Google Chrome stable
-# Using the official Google Linux repository for a stable, up-to-date binary.
-# ChromeDriver is NOT installed here — WebDriverManager handles it at runtime
-# when DOCKER=false, or the system chrome is used directly when DOCKER=true.
+# Install Google Chrome stable + runtime dependencies in one layer.
+# Chrome is fetched directly from Google — always gets the latest stable.
 # -----------------------------------------------------------------------------
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         wget \
         gnupg \
         ca-certificates \
+        unzip \
         fonts-liberation \
         libasound2 \
         libatk-bridge2.0-0 \
@@ -53,53 +52,32 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # -----------------------------------------------------------------------------
-# Install ChromeDriver matching the installed Chrome version.
-# Directly constructs the download URL from the Chrome version number —
-# no JSON parsing needed, no fragile grep chains.
+# Verify Chrome is installed correctly.
+# ChromeDriver is NOT installed here — WebDriverManager downloads the exact
+# matching version at test runtime, which is simpler and always correct.
 # -----------------------------------------------------------------------------
-RUN apt-get update && apt-get install -y --no-install-recommends unzip && \
-    rm -rf /var/lib/apt/lists/* && \
-    CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+\.\d+') && \
-    echo "Installing ChromeDriver for Chrome $CHROME_VERSION" && \
-    wget -qO /tmp/chromedriver.zip \
-        "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip" && \
-    unzip -q /tmp/chromedriver.zip -d /tmp/chromedriver && \
-    mv /tmp/chromedriver/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver && \
-    chmod +x /usr/local/bin/chromedriver && \
-    rm -rf /tmp/chromedriver.zip /tmp/chromedriver
-
-# -----------------------------------------------------------------------------
-# Verify the full toolchain before copying project files.
-# A failure here gives a clear build-time error rather than a runtime surprise.
-# -----------------------------------------------------------------------------
-RUN java -version && \
-    mvn -version && \
-    google-chrome --version && \
-    chromedriver --version
+RUN java -version && mvn -version && google-chrome --version
 
 WORKDIR /app
 
-# -----------------------------------------------------------------------------
-# Copy pre-downloaded Maven dependencies from Stage 1.
-# Placed before source files so this layer is reused on code-only changes.
-# -----------------------------------------------------------------------------
+# Copy pre-downloaded Maven dependencies from Stage 1
 COPY --from=dependencies /root/.m2 /root/.m2
 
 # Copy project source
 COPY pom.xml .
 COPY src ./src
 
-# Copy and wire up the entrypoint script
+# Copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # -----------------------------------------------------------------------------
-# DOCKER=true  → DriverFactory uses system ChromeDriver instead of downloading
-# HEADLESS=true → Chrome runs headless (required, no display in container)
-# These can be overridden at docker run time with -e flags
+# HEADLESS=true  → Chrome runs headless (no display in container)
+# BROWSER=chrome → use Chrome
+# NOTE: DOCKER=true is intentionally NOT set here so that WebDriverManager
+# runs normally and downloads the ChromeDriver that matches the installed Chrome.
 # -----------------------------------------------------------------------------
-ENV DOCKER=true \
-    BROWSER=chrome \
+ENV BROWSER=chrome \
     HEADLESS=true
 
 ENTRYPOINT ["/entrypoint.sh"]
