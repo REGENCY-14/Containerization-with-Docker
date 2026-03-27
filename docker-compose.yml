@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  selenium-tests:
+    # Build from the local Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    image: selenium-tests:latest
+
+    container_name: selenium-tests-run
+
+    # Give Chrome enough shared memory — without this Chrome will crash
+    shm_size: '2gb'
+
+    # Mount local target/ directory so Allure results and Surefire reports
+    # persist on the host after the container exits
+    volumes:
+      - ./target:/output
+
+    # Environment overrides — can be changed here without rebuilding the image
+    environment:
+      - DOCKER=true
+      - BROWSER=chrome
+      - HEADLESS=true
+
+    # Exit after tests complete (don't restart)
+    restart: "no"
