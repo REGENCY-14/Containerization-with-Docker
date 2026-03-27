@@ -37,11 +37,10 @@ IF %ERRORLEVEL% NEQ 0 (
 ECHO [OK] Image built successfully
 
 REM -----------------------------------------------------------------------------
-REM Step 2: Ensure target directories exist
+REM Step 2: Ensure target directory exists
 REM -----------------------------------------------------------------------------
 :RUN
-IF NOT EXIST "%TARGET_DIR%\allure-results" MKDIR "%TARGET_DIR%\allure-results"
-IF NOT EXIST "%TARGET_DIR%\surefire-reports" MKDIR "%TARGET_DIR%\surefire-reports"
+IF NOT EXIST "%TARGET_DIR%" MKDIR "%TARGET_DIR%"
 
 REM Remove previous container
 docker rm -f %CONTAINER_NAME% >nul 2>&1

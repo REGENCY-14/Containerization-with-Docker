@@ -41,8 +41,7 @@ fi
 # -----------------------------------------------------------------------------
 # Step 2: Ensure target directory exists for volume mount
 # -----------------------------------------------------------------------------
-mkdir -p "$TARGET_DIR/allure-results"
-mkdir -p "$TARGET_DIR/surefire-reports"
+mkdir -p "$TARGET_DIR"
 
 # -----------------------------------------------------------------------------
 # Step 3: Remove any previous container with the same name

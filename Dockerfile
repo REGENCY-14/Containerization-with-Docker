@@ -104,13 +104,9 @@ ENV BROWSER=chrome
 ENV HEADLESS=true
 
 # -----------------------------------------------------------------------------
-# Expose the Allure results directory as a volume mount point so results
-# can be extracted after the container finishes running
-# -----------------------------------------------------------------------------
-VOLUME ["/app/target/allure-results"]
-
-# -----------------------------------------------------------------------------
 # Run the tests in headless mode when the container starts.
+# NOTE: No VOLUME declaration here — the mount is handled at docker run time
+# via -v ./target:/app/target which avoids permission conflicts with mvn clean.
 # -Dheadless=true  → ChromeOptions adds --headless flag
 # -Dbrowser=chrome → DriverFactory creates ChromeDriver
 # -B               → Maven batch mode (no progress bars, cleaner logs)
